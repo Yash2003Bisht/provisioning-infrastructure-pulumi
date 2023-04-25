@@ -3,9 +3,9 @@ from flask import (current_app, Blueprint, request, flash,
                    redirect, url_for, render_template)
 
 from source import logger
-from helper_functions import create_pulumi_program, auto
+from helper_functions import create_pulumi_program_s3, auto
 
-blue_print = Blueprint("Sites", __name__, url_prefix="/sites")
+blue_print = Blueprint("sites", __name__, url_prefix="/sites")
 
 
 @blue_print.route("/new", methods=["GET", "POST"])
@@ -23,7 +23,7 @@ def create_stite():
             site_content = request.form.get("site-content")
         
         def pulumi_program():
-            return create_pulumi_program(str(site_content))
+            return create_pulumi_program_s3(str(site_content))
         
         try:
             # create a new stack, genrating our pulumi program on the fly from the POST body
@@ -89,6 +89,55 @@ def list_sites():
 
 
 @blue_print.route("/<string:id>/update", methods=["GET", "POST"])
+def update_site(id: str):
+    stack_name = id
+
+    if request.method == "POST":
+        file_url = request.form.get("file-url")
+        if file_url:
+            site_content = requests.get(file_url).text
+        else:
+            site_content = str(request.form.get("site-content"))
+
+        def pulumi_program():
+            create_pulumi_program_s3(str(site_content))
+
+        try:
+            stack = auto.select_stack(
+                stack_name=stack_name,
+                project_name=current_app.config["PROJECT_NAME"],
+                program=pulumi_program,
+            )
+            stack.set_config("aws:region", auto.ConfigValue("us-east-1"))
+
+            # deploy the stack, tailing the logs to stdout
+            stack.up(on_output=logger.info)
+
+            flash(f"Site '{stack_name}' successfully updated!", category="success")
+
+        except auto.ConcurrentUpdateError:
+            logger.info(f"{stack_name} already has an udpate in progress")
+            flash(f"Site '{stack_name}' already has an udpate in progress", category="danger")
+
+        except Exception as err:
+            logger.critical(f"An error occurred while updating {stack_name} VM -> {err}")
+            flash(str(err), category="danger")
+
+        return redirect(url_for("sites.list_sites"))
+
+    stack = auto.select_stack(
+        stack_name=stack_name,
+        project_name=current_app.config["PROJECT_NAME"],
+        # noop just to get the outputs
+        program=lambda: None,
+    )
+    outs = stack.outputs()
+    content_output = outs.get("website_content")
+    content = content_output.value if content_output else None
+    return render_template("sites/update.html", name=stack_name, content=content)
+
+
+@blue_print.route("/<string:id>/delete", methods=["GET", "POST"])
 def delete_sites(id: str):
     """
     View handler to delete a site
