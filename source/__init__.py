@@ -3,7 +3,6 @@ import logging
 
 from flask import Flask, render_template
 from dotenv import load_dotenv
-from .helper_functions import ensure_plugins
 
 # load env
 load_dotenv()
@@ -32,6 +31,7 @@ def create_app():
     :return: Flask Appapp
     """
     # install required plugin
+    from .helper_functions import ensure_plugins
     logger.info("Installing plugin")
     ensure_plugins()
 
