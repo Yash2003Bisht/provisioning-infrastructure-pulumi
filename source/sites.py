@@ -3,52 +3,12 @@ from flask import (current_app, Blueprint, request, flash,
                    redirect, url_for, render_template)
 
 from source import logger
-from helper_functions import create_pulumi_program_s3, auto
+from .helper_functions import create_pulumi_program_s3, auto
 
-blue_print = Blueprint("sites", __name__, url_prefix="/sites")
-
-
-@blue_print.route("/new", methods=["GET", "POST"])
-def create_stite():
-    """
-    View handler for creating new sites
-    """
-    if request.method == "POST":
-        stack_name = request.form.get("site-id")
-        file_url = request.form.get("file-url")
-
-        if file_url:
-            site_content = requests.get(file_url).text
-        else:
-            site_content = request.form.get("site-content")
-        
-        def pulumi_program():
-            return create_pulumi_program_s3(str(site_content))
-        
-        try:
-            # create a new stack, genrating our pulumi program on the fly from the POST body
-            stack = auto.create_stack(
-                stack_name=str(stack_name),
-                project_name=current_app.config["PROJECT_NAME"],
-                program=pulumi_program
-            )
-            stack.set_config("aws:region", auto.ConfigValue("us-east-1"))
-
-            # deploy the stack, tailing the log to stdout
-            stack.up(on_output=logger.info)
-
-            flash(f"Successfully created site '{stack_name}'", category="success")
-        
-        except auto.StackAlreadyExistsError:
-            logger.info(f"{stack_name} already exists")
-            flash(f"Site with name '{stack_name}' already exists, pick a unique name", category="danger")
-    
-        return render_template(url_for("sites.list_sites"))
-
-    return render_template("sites/create.html")
+sites_blue_print = Blueprint("sites", __name__, url_prefix="/sites")
 
 
-@blue_print.route("/", methods=["GET"])
+@sites_blue_print.route("/", methods=["GET"])
 def list_sites():
     """
     View handler to lists all sites
@@ -88,7 +48,47 @@ def list_sites():
     return render_template("sites/index.html", sites=sites)
 
 
-@blue_print.route("/<string:id>/update", methods=["GET", "POST"])
+@sites_blue_print.route("/new", methods=["GET", "POST"])
+def create_site():
+    """
+    View handler for creating new sites
+    """
+    if request.method == "POST":
+        stack_name = request.form.get("site-id")
+        file_url = request.form.get("file-url")
+
+        if file_url:
+            site_content = requests.get(file_url).text
+        else:
+            site_content = request.form.get("site-content")
+        
+        def pulumi_program():
+            return create_pulumi_program_s3(str(site_content))
+        
+        try:
+            # create a new stack, genrating our pulumi program on the fly from the POST body
+            stack = auto.create_stack(
+                stack_name=str(stack_name),
+                project_name=current_app.config["PROJECT_NAME"],
+                program=pulumi_program
+            )
+            stack.set_config("aws:region", auto.ConfigValue("us-east-1"))
+
+            # deploy the stack, tailing the log to stdout
+            stack.up(on_output=logger.info)
+
+            flash(f"Successfully created site '{stack_name}'", category="success")
+        
+        except auto.StackAlreadyExistsError:
+            logger.info(f"{stack_name} already exists")
+            flash(f"Site with name '{stack_name}' already exists, pick a unique name", category="danger")
+    
+        return render_template(url_for("sites.list_sites"))
+
+    return render_template("sites/create.html")
+
+
+@sites_blue_print.route("/<string:id>/update", methods=["GET", "POST"])
 def update_site(id: str):
     stack_name = id
 
@@ -137,7 +137,7 @@ def update_site(id: str):
     return render_template("sites/update.html", name=stack_name, content=content)
 
 
-@blue_print.route("/<string:id>/delete", methods=["GET", "POST"])
+@sites_blue_print.route("/<string:id>/delete", methods=["POST"])
 def delete_sites(id: str):
     """
     View handler to delete a site

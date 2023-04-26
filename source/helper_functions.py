@@ -77,7 +77,8 @@ def create_pulumi_program_vms(keydata: str, instance_type: str):
     public_key = keydata
     if public_key is None or public_key == "":
         home = str(Path.home())
-        with open(os.path.join(home, ".ssh/id_rsa.pub", "r")) as file:
+        # generate public key using ssh-keygen
+        with open(os.path.join(home, ".ssh/id_rsa.pub"), "r") as file:
             public_key = file.read()
     
     public_key = public_key.strip()
@@ -87,7 +88,7 @@ def create_pulumi_program_vms(keydata: str, instance_type: str):
     server = aws.ec2.Instance("dlami-server",
                               instance_type=instance_type,
                               vpc_security_group_ids=[group.id],
-                              key_name=keydata.id,
+                              key_name=keypair.id,
                               ami=ami.id)
 
     pulumi.export("instance_type", server.instance_type)

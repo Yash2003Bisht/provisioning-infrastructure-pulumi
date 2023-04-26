@@ -2,15 +2,55 @@ from flask import (current_app, Blueprint, request, flash,
                    redirect, url_for, render_template)
 
 from source import logger
-from helper_functions import auto, create_pulumi_program_vms
+from .helper_functions import auto, create_pulumi_program_vms
 
 
-blue_print = Blueprint("virtual_machines", __name__, url_prefix="/vms")
+vm_blue_print = Blueprint("virtual_machines", __name__, url_prefix="/vms")
 instance_types = ["t2.micro"]
 
 
-@blue_print.route("/new", methods=["GET", "POST"])
-def create_vms():
+@vm_blue_print.route("/", methods=["GET"])
+def list_vms():
+    """
+    View handler to lists all VMS
+    """
+    vms = []
+    org_name = current_app.config["PULUMI_ORG"]
+    project_name = current_app.config["PROJECT_NAME"]
+
+    try:
+        ws = auto.LocalWorkspace(
+            project_settings=auto.ProjectSettings(
+                name=project_name, runtime="python"
+            )
+        )
+
+        all_stack = ws.list_stacks()
+        for stack in all_stack:
+            stack = auto.select_stack(
+                stack_name=stack.name,
+                project_name=project_name,
+                # no-op program, just to get outputs
+                program=lambda: None
+            )
+
+            outs = stack.outputs()
+            if "public_dns" in outs:
+                vms.append({
+                    "name": stack.name,
+                    "url": f"http://{outs['public_dns'].value}",
+                    "console_url": f"https://app.pulumi.com/{org_name}/{project_name}/{stack.name}"
+                })
+    
+    except Exception as err:
+        logger.critical(f"An error occurred while fetching all VMS -> {err}")
+        flash(str(err), category="danger")
+    
+    return render_template("virtual_machines/index.html", vms=vms)
+
+
+@vm_blue_print.route("/new", methods=["GET", "POST"])
+def create_vm():
     """
     View handler for creating new VMS
     """
@@ -45,47 +85,7 @@ def create_vms():
     return render_template("virtual_machines/create.html", instance_types=instance_types, curr_instance_type=None)
 
 
-@blue_print.route("/", methods=["GET"])
-def list_vms():
-    """
-    View handler to lists all VMS
-    """
-    vms = []
-    org_name = current_app.config["PULUMI_ORG"]
-    project_name = current_app.config("PROJECT_NAME")
-
-    try:
-        ws = auto.LocalWorkspace(
-            project_settings=auto.ProjectSettings(
-                name=project_name, runtime="python"
-            )
-        )
-
-        all_stack = ws.list_stacks()
-        for stack in all_stack:
-            stack = auto.select_stack(
-                stack_name=stack.name,
-                project_name=project_name,
-                # no-op program, just to get outputs
-                program=lambda: None
-            )
-
-            outs = stack.outputs()
-            if "public_dns" in outs:
-                vms.append({
-                    "name": stack.name,
-                    "url": f"http://{outs['public_dns'].value}",
-                    "console_url": f"https://app.pulumi.com/{org_name}/{project_name}/{stack.name}"
-                })
-    
-    except Exception as err:
-        logger.critical(f"An error occurred while fetching all VMS -> {err}")
-        flash(str(err), category="danger")
-    
-    return render_template("virtual_machines/index.html", vms=vms)
-
-
-@blue_print.route("/<string:id>/update", methods=["GET", "POST"])
+@vm_blue_print.route("/<string:id>/update", methods=["GET", "POST"])
 def update_vm(id: str):
     """
     View handler to delete a vm
@@ -125,7 +125,7 @@ def update_vm(id: str):
 
     stack = auto.select_stack(
         stack_name=stack_name,
-        program_name=current_app.config["PROJECT_NAME"],
+        project_name=current_app.config["PROJECT_NAME"],
         # no-op program, just to get outputs
         program=lambda: None
     )
@@ -139,7 +139,7 @@ def update_vm(id: str):
                            instance_types=instance_types, curr_instance_type=instance_type.value)
 
 
-@blue_print.route("/<string:id>/delete")
+@vm_blue_print.route("/<string:id>/delete", methods=["POST"])
 def delete_vm(id: str):
     """
     View handler to delete a vm

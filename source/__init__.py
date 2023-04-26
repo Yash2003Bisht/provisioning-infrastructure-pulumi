@@ -39,9 +39,9 @@ def create_app():
     logger.info("Configuring APP")
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_mapping(
-        SECRET_KEY=os.environ.get("SECRET_KEY"),
-        PROJECT_NAME=os.environ.get("PROJECT_NAME"),
-        PULUMI_ORG=os.environ("PULUMI_ORG")
+        SECRET_KEY=os.environ["SECRET_KEY"],
+        PROJECT_NAME=os.environ["PROJECT_NAME"],
+        PULUMI_ORG=os.environ["PULUMI_ORG"]
     )
 
     @app.route("/", methods=["GET"])
@@ -49,12 +49,13 @@ def create_app():
         return render_template("index.html")
 
 
-    import sites, virtual_machines
+    from .sites import sites_blue_print
+    from .virtual_machines import vm_blue_print
     
     # register blueprint
     logger.info("Registering blueprints")
-    app.register_blueprint(sites.blue_print)
-    app.register_blueprint(virtual_machines.blue_print)
+    app.register_blueprint(sites_blue_print)
+    app.register_blueprint(vm_blue_print)
 
     return app
 
