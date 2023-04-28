@@ -3,6 +3,7 @@ import logging
 
 from flask import Flask, render_template
 from dotenv import load_dotenv
+import redis
 
 # load env
 load_dotenv()
@@ -23,6 +24,10 @@ ch.setFormatter(formatter)
 
 # add ch to logger
 logger.addHandler(ch)
+
+# redis instance
+redis_instance = redis.Redis(host=os.environ["REDIS_HOST"], port=os.environ["REDIS_PORT"],
+                             db=os.environ["REDIS_DB"], decode_responses=True)
 
 
 def create_app():
