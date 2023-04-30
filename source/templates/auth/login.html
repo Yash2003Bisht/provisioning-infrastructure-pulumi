@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block header %}
+  {% block title %}Login{% endblock %}
+{% endblock %}
+
+{% block body %}
+    <div class="container mt-5">
+        <div class="row justify-content-center">
+        <div class="col-lg-4 col-md-6 col-sm-8">
+            <h2 class="text-center mb-4">Login</h2>
+            <form method="post">
+            <div class="mb-3">
+                <label for="email" class="form-label">Email</label>
+                <input type="email" class="form-control" name="email" id="email" value="{{ email }}"
+                    placeholder="Enter your email" required>
+            </div>
+            <div class="mb-3">
+                <label for="password" class="form-label">Password</label>
+                <input type="password" class="form-control" name="password" id="password"
+                    pattern=".{4,}" title="Password should be 4 characters long!" placeholder="Enter your password" required>
+            </div>
+            <div class="mb-3 form-check">
+                <input type="checkbox" class="form-check-input" name="remember" id="remember">
+                <label class="form-check-label" for="remember">Remember me</label>
+            </div>
+            <button type="submit" class="btn btn-primary d-block w-100">Login</button>
+            </form>
+            <p class="text-center mt-3">Don't have an account? <a href="{{ url_for("auth.signup") }}">Sign up</a></p>
+        </div>
+        </div>
+    </div>
+{% endblock %}

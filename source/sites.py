@@ -1,6 +1,7 @@
 import requests
 from flask import (current_app, Blueprint, request, flash, 
                    redirect, url_for, render_template)
+from flask_login import login_required
 
 from source import logger
 from .helper_functions import create_pulumi_program_s3, auto
@@ -9,6 +10,7 @@ sites_blue_print = Blueprint("sites", __name__, url_prefix="/sites")
 
 
 @sites_blue_print.route("/", methods=["GET"])
+@login_required
 def list_sites():
     """
     View handler to lists all sites
@@ -49,6 +51,7 @@ def list_sites():
 
 
 @sites_blue_print.route("/new", methods=["GET", "POST"])
+@login_required
 def create_site():
     """
     View handler for creating new sites
@@ -89,6 +92,7 @@ def create_site():
 
 
 @sites_blue_print.route("/<string:id>/update", methods=["GET", "POST"])
+@login_required
 def update_site(id: str):
     stack_name = id
 
@@ -138,6 +142,7 @@ def update_site(id: str):
 
 
 @sites_blue_print.route("/<string:id>/delete", methods=["POST"])
+@login_required
 def delete_sites(id: str):
     """
     View handler to delete a site

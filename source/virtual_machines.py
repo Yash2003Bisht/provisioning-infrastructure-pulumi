@@ -1,5 +1,6 @@
 from flask import (current_app, Blueprint, request, flash, 
                    redirect, url_for, render_template)
+from flask_login import login_required
 
 from source import logger
 from .helper_functions import auto, create_pulumi_program_vms, store_in_redis, get_from_redis
@@ -10,6 +11,7 @@ instance_types = ["t2.micro"]
 
 
 @vm_blue_print.route("/", methods=["GET"])
+@login_required
 def list_vms():
     """
     View handler to lists all VMS
@@ -59,6 +61,7 @@ def list_vms():
 
 
 @vm_blue_print.route("/new", methods=["GET", "POST"])
+@login_required
 def create_vm():
     """
     View handler for creating new VMS
@@ -113,6 +116,7 @@ def create_vm():
 
 
 @vm_blue_print.route("/<string:id>/update", methods=["GET", "POST"])
+@login_required
 def update_vm(id: str):
     """
     View handler to update a vm
@@ -167,6 +171,7 @@ def update_vm(id: str):
 
 
 @vm_blue_print.route("/<string:id>/delete", methods=["POST"])
+@login_required
 def delete_vm(id: str):
     """
     View handler to delete a vm

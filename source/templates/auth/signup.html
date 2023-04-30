@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block header %}
+  {% block title %}SignUp{% endblock %}
+{% endblock %}
+
+{% block body %}
+  <div class="container mt-5">
+    <div class="row justify-content-center">
+      <div class="col-lg-4 col-md-6 col-sm-8">
+        <h2 class="text-center mb-4">Provision Infrastructure Programmatically</h2>
+        <form method="post">
+          <div class="mb-3">
+            <label for="username" class="form-label">Name</label>
+            <input type="text" class="form-control" name="username" id="username" value="{{ username }}"
+              placeholder="Enter your Name" required>
+          </div>
+          <div class="mb-3">
+            <label for="email" class="form-label">Email</label>
+            <input type="email" class="form-control" name="email" id="email" value="{{ email }}"
+              placeholder="Enter your email" required>
+          </div>
+          <div class="mb-3">
+            <label for="password" class="form-label">Password</label>
+            <input type="password" class="form-control" name="password" id="password"
+              pattern=".{4,}" title="Password should be 4 characters long!" placeholder="Enter your password" required>
+          </div>
+          <div class="mb-3">
+            <label for="confirmPassword" class="form-label">Confirm Password</label>
+            <input type="password" class="form-control" name="confirmpassword" id="confirmPassword"
+              placeholder="Confirm your password" required>
+          </div>
+          <button type="submit" class="btn btn-primary d-block w-100">Signup</button>
+        </form>
+        <p class="text-center mt-3">Already have an account? <a href="{{ url_for("auth.login") }}">Login</a></p>
+      </div>
+    </div>
+  </div>
+{% endblock %}
