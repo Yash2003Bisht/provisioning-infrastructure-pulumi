@@ -2,10 +2,10 @@ import re
 
 from flask import Blueprint, flash, render_template, request, redirect, url_for, session
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask_login import current_user, login_required, login_user, logout_user
+from flask_login import current_user, login_user, logout_user
 
 from .models import User
-from . import database
+from . import database, logger
 
 
 auth_blue_print = Blueprint("auth", __name__)
@@ -23,8 +23,6 @@ def login():
         password = request.form.get("password")
         remember = True if request.form.get("remember") == "on" else False
         user = User.query.filter_by(email=email).first()
-
-        print(remember)
 
         if not user:
             flash("No user exists with this email!", category="danger")
@@ -81,6 +79,7 @@ def signup():
 
             login_user(user)
 
+            logger.info(f"A new user with the {email} email has signup")
             return redirect(url_for("index"))
 
     return render_template("auth/signup.html", username=username, email=email)
