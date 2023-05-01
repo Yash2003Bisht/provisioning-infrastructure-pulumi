@@ -1,9 +1,10 @@
 import os
 import logging
 
-from flask import Flask, render_template
+from flask import Flask, render_template, request, flash
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager, login_required
+from flask_login import LoginManager, login_required, current_user
+from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
 import redis
 
@@ -64,9 +65,9 @@ def create_app():
     logger.info("Initializing database")
     database.init_app(app)
 
-    from .sites import sites_blue_print
-    from .virtual_machines import vm_blue_print
-    from .auth import auth_blue_print
+    from .routes.sites import sites_blue_print
+    from .routes.virtual_machines import vm_blue_print
+    from .routes.auth import auth_blue_print
     
     # register blueprint
     logger.info("Registering blueprints")
@@ -99,3 +100,28 @@ def create_app():
 @login_required
 def index():
     return render_template("index.html")
+
+
+@app.route("/account-setting", methods=["GET", "POST"])
+@login_required
+def account_setting():
+    name = current_user.name
+    email = current_user.email
+
+    if request.method == "POST":
+        name = request.form.get("name")
+        email = request.form.get("email")
+        current_password = request.form.get("current-password")
+        new_password = request.form.get("new-password")
+        
+        current_user.name = name
+        current_user.email = email
+        current_user.password = generate_password_hash(new_password) \
+            if len(new_password) >= 4 and check_password_hash(current_user.password, current_password) else current_user.password
+
+        database.session.commit()
+
+        flash("Your profile has been udpated", category="success")
+        logger.info(f"{email} profile updated successfully")
+
+    return render_template("account_setting.html", sub_title="Settings", name=name, email=email)

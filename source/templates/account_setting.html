@@ -1,0 +1,29 @@
+{% extends "login_base.html" %}
+
+{% block body %}
+    <div class="container">
+        <form method="post">
+            <div class="mb-3">
+                <label for="name" class="form-label">Name</label>
+                <input type="text" class="form-control" name="name" id="name"
+                    placeholder="Enter your name" value="{{ name }}" required>
+            </div>
+            <div class="mb-3">
+                <label for="email" class="form-label">Email</label>
+                <input type="email" class="form-control" name="email" id="email"
+                    placeholder="Enter your email" value="{{ email }}" required>
+            </div>
+            <div class="mb-3">
+                <label for="current-password" class="form-label">Current Password</label>
+                <input type="password" class="form-control" name="current-password"
+                    id="current-password" placeholder="Enter current password">
+            </div>
+            <div class="mb-3">
+                <label for="new-password" class="form-label">Confirm Password</label>
+                <input type="password" class="form-control" name="new-password"
+                    id="new-password" placeholder="Enter new password">
+            </div>
+            <button type="submit" class="btn btn-primary">Update</button>
+        </form>
+    </div>
+{% endblock body %}
