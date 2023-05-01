@@ -5,10 +5,35 @@
   <script src="{{ url_for("static", filename="bootstrap.min.js") }}"></script>
 </head>
 <body>
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container">
+      <a class="navbar-brand" href="{{ url_for("index") }}">Provision Infrastructure</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+        aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav ms-auto">
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for("sites.list_sites") }}">Sites</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for("virtual_machines.list_vms") }}">Virtual Machines</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for("account_setting") }}">Setting</a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="{{ url_for("auth.logout") }}">Logout</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </nav>
   <div class="container p-2">
     <header class="d-flex flex-wrap justify-content-center py-3 mb-4 border-bottom">
       <a href="{{ url_for("index") }}" class="d-flex align-items-center mb-3 mb-md-0 me-md-auto text-dark text-decoration-none">
-        <span class="fs-3">Provision Infrastructure</span>
+        <span class="fs-3">{{ sub_title }}</span>
       </a>
       {% block nav %}{% endblock %}
     </header>
@@ -17,9 +42,14 @@
     <div>
       <header class="row gy-4">
         <span class="fs-4">{% block header %}{% endblock %}</span>
+        <div class="container">
         {% for category, message in get_flashed_messages(with_categories=true) %}
-            <div class="alert alert-{{ category }}" role="alert">{{ message }}</div>
+            <div class="alert alert-{{ category }} alert-dismissible fade show" role="alert">
+                {{ message }}
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+            </div>
         {% endfor %}
+    </div>
       </header>
     </div>
     {% block body %}{% endblock %}

@@ -4,7 +4,7 @@ from flask import (current_app, Blueprint, request, flash,
 from flask_login import login_required
 
 from source import logger
-from .helper_functions import create_pulumi_program_s3, auto
+from source.helper_functions import create_pulumi_program_s3, auto
 
 sites_blue_print = Blueprint("sites", __name__, url_prefix="/sites")
 
@@ -47,7 +47,7 @@ def list_sites():
         logger.critical(f"An error occurred while fetching all sites -> {err}")
         flash(str(err), category="danger")
     
-    return render_template("sites/index.html", sites=sites)
+    return render_template("sites/index.html", sites=sites, sub_title="Sites")
 
 
 @sites_blue_print.route("/new", methods=["GET", "POST"])

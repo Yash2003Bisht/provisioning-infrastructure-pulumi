@@ -1,11 +1,11 @@
 import re
 
-from flask import Blueprint, flash, render_template, request, redirect, url_for, session
+from flask import Blueprint, flash, render_template, request, redirect, url_for
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_login import current_user, login_user, logout_user
 
-from .models import User
-from . import database, logger
+from source.models import User
+from source import database, logger
 
 
 auth_blue_print = Blueprint("auth", __name__)
@@ -14,9 +14,14 @@ auth_blue_print = Blueprint("auth", __name__)
 @auth_blue_print.route("/login", methods=["GET", "POST"])
 def login():
     email = ""
+    referrer_path = request.args.get("next", "")
+
+    if referrer_path == "":
+        referrer_path = "/"
+
 
     if current_user.is_authenticated:
-        return redirect(url_for("index"))
+        return redirect(referrer_path)
     
     elif request.method == "POST":
         email = request.form.get("email")
@@ -32,7 +37,7 @@ def login():
         
         else:
             login_user(user, remember)
-            return redirect(url_for("index"))
+            return redirect(referrer_path)
 
     return render_template("auth/login.html", email=email)
 

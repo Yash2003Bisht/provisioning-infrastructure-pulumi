@@ -3,7 +3,7 @@ from flask import (current_app, Blueprint, request, flash,
 from flask_login import login_required
 
 from source import logger
-from .helper_functions import auto, create_pulumi_program_vms, store_in_redis, get_from_redis
+from source.helper_functions import auto, create_pulumi_program_vms, store_in_redis, get_from_redis
 
 
 vm_blue_print = Blueprint("virtual_machines", __name__, url_prefix="/vms")
@@ -57,7 +57,7 @@ def list_vms():
         logger.critical(f"An error occurred while fetching all VMS -> {err}")
         flash("Something went wrong", category="danger")
     
-    return render_template("virtual_machines/index.html", vms=vms)
+    return render_template("virtual_machines/index.html", vms=vms, sub_title="Virtual Machines")
 
 
 @vm_blue_print.route("/new", methods=["GET", "POST"])
