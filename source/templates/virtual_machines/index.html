@@ -27,22 +27,22 @@
                 <tr>
                     <td class="align-bottom" colspan="4">
                         <div class="p-1">
-                            <pre> ssh -i ~/.ssh/id_rsa.pem ec2-user@{{ vm["dns_name"] }} </pre>
+                            <pre> ssh -i ~/.ssh/id_rsa.pem ec2-user@{{ vm.dns_name }} </pre>
                         </div>
                     </td>
                     <td>
                         <div class="float-end p-1">
-                            <form action="{{ url_for("virtual_machines.delete_vm", id=vm["name"]) }}" method="post">
+                            <form action="{{ url_for("virtual_machines.delete_vm", id=vm.name) }}" method="post">
                                 <input class="btn btn-sm btn-danger" type="submit" value="Delete">
                             </form>
                         </div>
                         <div class="float-end p-1">
-                            <form action="{{ url_for("virtual_machines.update_vm", id=vm["name"]) }}" method="get">
+                            <form action="{{ url_for("virtual_machines.update_vm", id=vm.name) }}" method="get">
                                 <input class="btn btn-sm btn-primary" type="submit" value="Edit">
                             </form>
                         </div>
                         <div class="float-end p-1">
-                            <a href="{{ vm["console_url"] }}" class="btn btn-sm btn-outline-primary" target="_blank">View in console</a>
+                            <a href="{{ vm.console_url }}" class="btn btn-sm btn-outline-primary" target="_blank">View in console</a>
                         </div>
                     </td>
                 </tr>

@@ -1,9 +1,10 @@
-from flask import (current_app, Blueprint, request, flash, 
+from flask import (current_app, Blueprint, request, flash,
                    redirect, url_for, render_template)
-from flask_login import login_required
+from flask_login import login_required, current_user
 
-from source import logger
-from source.helper_functions import auto, create_pulumi_program_vms, store_in_redis, get_from_redis
+from source import logger, database
+from source.helper_functions import auto, create_pulumi_program_vms
+from source.models import VirtualMachines
 
 
 vm_blue_print = Blueprint("virtual_machines", __name__, url_prefix="/vms")
@@ -16,47 +17,8 @@ def list_vms():
     """
     View handler to lists all VMS
     """
-    org_name = current_app.config["PULUMI_ORG"]
-    project_name = current_app.config["PROJECT_NAME"]
-
-    try:
-        vms = []
-
-        if not get_from_redis("vms", True):
-            ws = auto.LocalWorkspace(
-                project_settings=auto.ProjectSettings(
-                    name=project_name, runtime="python"
-                )
-            )
-
-            all_stack = ws.list_stacks()
-            for stack in all_stack:
-                stack = auto.select_stack(
-                    stack_name=stack.name,
-                    project_name=project_name,
-                    # no-op program, just to get outputs
-                    program=lambda: None
-                )
-
-                outs = stack.outputs()
-                if "public_dns" in outs:
-                    vms.append({
-                        "name": stack.name,
-                        "dns_name": f"{outs['public_dns'].value}",
-                        "console_url": f"https://app.pulumi.com/{org_name}/{project_name}/{stack.name}"
-                    })
-            
-            # store the vms data into redis
-            store_in_redis("vms", vms)
-
-        else:
-            # load the vms data from redis
-            vms = get_from_redis("vms")
-
-    except Exception as err:
-        logger.critical(f"An error occurred while fetching all VMS -> {err}")
-        flash("Something went wrong", category="danger")
-    
+    # get all virtual machines of user from the database
+    vms = current_user.virtual_machines
     return render_template("virtual_machines/index.html", vms=vms, sub_title="Virtual Machines")
 
 
@@ -75,7 +37,7 @@ def create_vm():
 
         def pulumi_program():
             return create_pulumi_program_vms(keydata, instance_type)
-        
+
         try:
             # create a new stack, genrating our pulumi program on the fly from the POST body
             stack = auto.create_stack(
@@ -88,28 +50,25 @@ def create_vm():
             # deploy the stack, tailing the log to stdout
             stack.up(on_output=logger.info)
 
-            # store the newly created stack into redis
+            # store the newly created stack into VirtualMachines model
             outs = stack.outputs()
-            new_vms = {
-                "name": stack_name,
-                "dns_name": f"{outs['public_dns'].value}",
-                "console_url": f"https://app.pulumi.com/{org_name}/{project_name}/{stack_name}"
-            }
+            new_vm = VirtualMachines(
+                name=stack_name,
+                dns_name=f"{outs['public_dns'].value}",
+                console_url=f"https://app.pulumi.com/{org_name}/{project_name}/{stack_name}",
+                refrence_key=current_user.id
+            )
+            database.session.add(new_vm)
+            database.session.commit()
 
-            if get_from_redis("vms", True):
-                all_vms: list = get_from_redis("vms")
-            else:
-                all_vms = []
-
-            all_vms.append(new_vms)
-            store_in_redis("vms", all_vms)
-
-            flash(f"Successfully created VM '{stack_name}'", category="success")
+            flash(
+                f"Successfully created VM '{stack_name}'", category="success")
 
         except auto.StackAlreadyExistsError:
             logger.info(f"{stack_name} already exists")
-            flash(f"VM with name '{stack_name}' already exists, pick a unique name", category="danger")
-        
+            flash(
+                f"VM with name '{stack_name}' already exists, pick a unique name", category="danger")
+
         return redirect(url_for("virtual_machines.list_vms"))
 
     return render_template("virtual_machines/create.html", instance_types=instance_types, curr_instance_type=None)
@@ -127,6 +86,8 @@ def update_vm(id: str):
     if request.method == "POST":
         keydata = request.form.get("vm-keypair")
         instance_type = request.form.get("instance_type")
+        project_name = current_app.config["PROJECT_NAME"]
+        org_name = current_app.config["PULUMI_ORG"]
 
         def pulumi_program():
             return create_pulumi_program_vms(keydata, instance_type)
@@ -142,7 +103,21 @@ def update_vm(id: str):
             # deploy the stack, tailing the log to stdout
             stack.up(on_output=logger.info)
 
-            flash(f"VM '{stack_name}' successfully updated", category="success")
+            # update the VirtualMachines model
+            outs = stack.outputs()
+            vm = VirtualMachines.query.filter_by(name=stack_name).first()
+
+            if vm:
+                vm.name = stack_name
+                vm.dns_name = f"{outs['public_dns'].value}"
+                vm.console_url = f"https://app.pulumi.com/{org_name}/{project_name}/{stack_name}"
+                database.session.commit()
+            else:
+                logger.critical(
+                    f"{stack_name} stack name not found on Virtual Machine model")
+
+            flash(f"VM '{stack_name}' successfully updated",
+                  category="success")
 
         except auto.ConcurrentUpdateError:
             logger.info(f"{stack_name} already has an udpate in progress")
@@ -191,30 +166,19 @@ def delete_vm(id: str):
         stack.destroy(on_output=logger.info)
         stack.workspace.remove_stack(stack_name)
 
-        # delete the stack from redis
-        if get_from_redis("vms", True):
-            vms: list = get_from_redis("vms")
-            index = None
-
-            for idx, vm in enumerate(vms):
-                if vm["name"] == stack_name:
-                    index = idx
-                    break
-            
-            if index is not None:
-                vms.pop(index)
-                store_in_redis("vms", vms)
-            else:
-                logger.error(f"{stack_name} not found in redis")
+        # delete the stack from VirtualMachines model
+        vm = VirtualMachines.query.filter_by(name=stack_name).first()
+        database.session.delete(vm)
+        database.session.commit()
 
         flash(f"VM '{stack_name}' successfully deleted!", category="success")
-    
+
     except auto.ConcurrentUpdateError:
         logger.info(f"{stack_name} deletion is in progress")
         flash(f"Error: VM '{stack_name}' already has an deletion in progress", category="danger")
-    
+
     except Exception as err:
         logger.critical(f"An error occurred while deleting the stack {stack_name} -> {err}")
         flash("Something went wrong", category="danger")
- 
+
     return redirect(url_for("virtual_machines.list_vms"))
