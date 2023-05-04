@@ -113,8 +113,7 @@ def update_vm(id: str):
                 vm.console_url = f"https://app.pulumi.com/{org_name}/{project_name}/{stack_name}"
                 database.session.commit()
             else:
-                logger.critical(
-                    f"{stack_name} stack name not found on Virtual Machine model")
+                logger.critical(f"{stack_name} stack name not found on Virtual Machine model")
 
             flash(f"VM '{stack_name}' successfully updated",
                   category="success")

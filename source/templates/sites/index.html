@@ -27,22 +27,22 @@
             <tr>
                 <td class="align-bottom" colspan="4">
                     <div class="p-1">
-                        <a href="{{ site["url"] }}" class="fs-5 align-bottom" target="_blank">{{ site["name"] }}</a>
+                        <a href="{{ site.url }}" class="fs-5 align-bottom" target="_blank">{{ site.name }}</a>
                     </div>
                 </td>
                 <td>
                     <div class="float-end p-1">
-                        <form action="{{ url_for("sites.delete_site", id=site["name"]) }}" method="post">
+                        <form action="{{ url_for("sites.delete_site", id=site.name) }}" method="post">
                             <input class="btn btn-sm btn-danger" type="submit" value="Delete">
                         </form>
                     </div>
                     <div class="float-end p-1">
-                        <form action="{{ url_for("sites.update_site", id=site["name"]) }}" method="get">
+                        <form action="{{ url_for("sites.update_site", id=site.name) }}" method="get">
                             <input class="btn btn-sm btn-primary" type="submit" value="Edit">
                         </form>
                     </div>
                     <div class="float-end p-1">
-                        <a href="{{ site["console_url"] }}" class="btn btn-sm btn-outline-primary" target="_blank">View in console</a>
+                        <a href="{{ site.console_url }}" class="btn btn-sm btn-outline-primary" target="_blank">View in console</a>
                     </div>
                 </td>
             </tr>

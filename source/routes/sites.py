@@ -1,10 +1,11 @@
 import requests
-from flask import (current_app, Blueprint, request, flash, 
+from flask import (current_app, Blueprint, request, flash,
                    redirect, url_for, render_template)
-from flask_login import login_required
+from flask_login import login_required, current_user
 
-from source import logger
+from source import logger, database
 from source.helper_functions import create_pulumi_program_s3, auto
+from source.models import Sites
 
 sites_blue_print = Blueprint("sites", __name__, url_prefix="/sites")
 
@@ -15,38 +16,8 @@ def list_sites():
     """
     View handler to lists all sites
     """
-    sites = []
-    org_name = current_app.config["PULUMI_ORG"]
-    project_name = current_app.config["PROJECT_NAME"]
-
-    try:
-        ws = auto.LocalWorkspace(
-            project_settings=auto.ProjectSettings(
-                name=project_name, runtime="python"
-            )
-        )
-
-        all_stack = ws.list_stacks()
-        for stack in all_stack:
-            stack = auto.select_stack(
-                stack_name=stack.name,
-                project_name=project_name,
-                # no-op program, just to get outputs
-                program=lambda: None
-            )
-
-            outs = stack.outputs()
-            if "website_url" in outs:
-                sites.append({
-                    "name": stack.name,
-                    "url": f"http://{outs['website_url'].value}",
-                    "console_url": f"https://app.pulumi.com/{org_name}/{project_name}/{stack.name}"
-                })
-    
-    except Exception as err:
-        logger.critical(f"An error occurred while fetching all sites -> {err}")
-        flash(str(err), category="danger")
-    
+    # get all sites of user from the database
+    sites = current_user.sites
     return render_template("sites/index.html", sites=sites, sub_title="Sites")
 
 
@@ -59,15 +30,17 @@ def create_site():
     if request.method == "POST":
         stack_name = request.form.get("site-id")
         file_url = request.form.get("file-url")
+        org_name = current_app.config["PULUMI_ORG"]
+        project_name = current_app.config["PROJECT_NAME"]
 
         if file_url:
             site_content = requests.get(file_url).text
         else:
             site_content = request.form.get("site-content")
-        
+
         def pulumi_program():
             return create_pulumi_program_s3(str(site_content))
-        
+
         try:
             # create a new stack, genrating our pulumi program on the fly from the POST body
             stack = auto.create_stack(
@@ -80,12 +53,22 @@ def create_site():
             # deploy the stack, tailing the log to stdout
             stack.up(on_output=logger.info)
 
+            # store the newly created stack into Sites model
+            outs = stack.outputs()
+            new_site = Sites(
+                name=stack.name,
+                url=f"http://{outs['website_url'].value}",
+                console_url=f"https://app.pulumi.com/{org_name}/{project_name}/{stack.name}"
+            )
+            database.session.add(new_site)
+            database.session.commit()
+
             flash(f"Successfully created site '{stack_name}'", category="success")
-        
+
         except auto.StackAlreadyExistsError:
             logger.info(f"{stack_name} already exists")
             flash(f"Site with name '{stack_name}' already exists, pick a unique name", category="danger")
-    
+
         return render_template(url_for("sites.list_sites"))
 
     return render_template("sites/create.html")
@@ -117,6 +100,19 @@ def update_site(id: str):
             # deploy the stack, tailing the logs to stdout
             stack.up(on_output=logger.info)
 
+            # update the VirtualMachines model
+            outs = stack.outputs()
+            site = Sites.query.filter_by(name=stack_name).first()
+
+            if site:
+                site.name = stack.name
+                site.url = f"http://{outs['website_url'].value}",
+                site.console_url = f"https://app.pulumi.com/{org_name}/{project_name}/{stack.name}"
+                database.session.commit()
+            else:
+                logger.critical(
+                    f"{stack_name} stack name not found on Sites model")
+
             flash(f"Site '{stack_name}' successfully updated!", category="success")
 
         except auto.ConcurrentUpdateError:
@@ -124,7 +120,7 @@ def update_site(id: str):
             flash(f"Site '{stack_name}' already has an udpate in progress", category="danger")
 
         except Exception as err:
-            logger.critical(f"An error occurred while updating {stack_name} VM -> {err}")
+            logger.critical(f"An error occurred while updating {stack_name} Site -> {err}")
             flash(str(err), category="danger")
 
         return redirect(url_for("sites.list_sites"))
@@ -161,14 +157,20 @@ def delete_sites(id: str):
         # NOTE: stack.destroy will automatically delete the resource on aws
         stack.destroy(on_output=logger.info)
         stack.workspace.remove_stack(stack_name)
+
+        # delete the stack from Sites model
+        site = Sites.query.filter_by(name=stack_name).first()
+        database.session.delete(site)
+        database.session.commit()
+
         flash(f"Site '{stack_name}' successfully deleted!", category="success")
-    
+
     except auto.ConcurrentUpdateError:
         logger.info(f"{stack_name} deletion is in progress")
         flash(f"Error: site '{stack_name}' already has an deletion in progress", category="danger")
-    
+
     except Exception as err:
         logger.critical(f"An error occurred while deleting the stack {stack_name} -> {err}")
         flash(str(err), category="danger")
- 
+
     return redirect(url_for("sites.list_sites"))
