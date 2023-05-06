@@ -7,7 +7,7 @@ import pulumi_aws as aws
 # pulumi automation framework
 import pulumi.automation as auto
 
-from source import logger, redis_instance
+from source import logger
 
 
 def ensure_plugins():
@@ -16,28 +16,6 @@ def ensure_plugins():
     """
     work_space = auto.LocalWorkspace()
     work_space.install_plugin("aws", "v4.0.0")
-
-
-def store_in_redis(key: str, data: list):
-    """
-    Store data in redis
-    :param key: 
-    :param data: 
-    """
-    redis_instance.set(key, json.dumps(data))
-
-
-def get_from_redis(key: str, search: bool = False):
-    """
-    Get data from redis
-    :param key: 
-    :param search: 
-    """
-    if search:
-        if not redis_instance.get(key):
-            return False
-        return True
-    return json.loads(redis_instance.get(key))
 
 
 def create_pulumi_program_s3(content: str):

@@ -6,7 +6,6 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from dotenv import load_dotenv
-import redis
 
 # load env
 load_dotenv()
@@ -27,10 +26,6 @@ ch.setFormatter(formatter)
 
 # add ch to logger
 logger.addHandler(ch)
-
-# redis instance
-redis_instance = redis.Redis(host=os.environ["REDIS_HOST"], port=os.environ["REDIS_PORT"],
-                             db=os.environ["REDIS_DB"], decode_responses=True)
 
 # database
 database = SQLAlchemy()
