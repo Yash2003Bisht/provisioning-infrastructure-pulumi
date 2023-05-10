@@ -74,7 +74,7 @@ def create_app():
     from .models import User, VirtualMachines
 
     # create database
-    if not os.path.exists("database.db"):
+    if not os.path.exists(app.config.get("SQLALCHEMY_DATABASE_URI")):
         logger.info("Creating database")
         with app.app_context():
             database.create_all()
